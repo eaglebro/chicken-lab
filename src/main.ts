@@ -9,6 +9,8 @@ type EggType = "common" | "glow";
 type IncubationType = EggType | "breed";
 type ViewId = "farm" | "hatch" | "flock" | "explore";
 type ZoneId = "garden" | "puddle" | "windmill";
+type FacilityId = "coop" | "incubator" | "nest" | "warehouse" | "training";
+type MissionId = "collect" | "hatch" | "breed" | "team" | "explore" | "upgrade";
 
 interface SpeciesDefinition {
   name: string;
@@ -38,6 +40,42 @@ interface Resources {
   feather: number;
   eggs: number;
   glowEggs: number;
+  parts: number;
+}
+
+interface FacilityDefinition {
+  name: string;
+  icon: string;
+  description: string;
+  baseCost: { grain: number; feather: number; parts: number };
+  effect: string;
+}
+
+interface Facilities {
+  coop: number;
+  incubator: number;
+  nest: number;
+  warehouse: number;
+  training: number;
+}
+
+interface ProgressStats {
+  collected: number;
+  hatched: number;
+  bred: number;
+  explored: number;
+}
+
+interface MissionDefinition {
+  id: MissionId;
+  title: string;
+  description: string;
+  target: number;
+  reward: Partial<Resources>;
+}
+
+interface MissionState {
+  claimed: boolean;
 }
 
 interface Incubation {
@@ -72,6 +110,9 @@ interface GameState {
   exploration: Exploration | null;
   lastExpedition: ExpeditionResult | null;
   events: string[];
+  facilities: Facilities;
+  stats: ProgressStats;
+  missions: Record<MissionId, MissionState>;
   lastTick: number;
 }
 
@@ -84,6 +125,7 @@ interface Zone {
   reward: string;
   grain: readonly [number, number];
   feather: readonly [number, number];
+  parts: readonly [number, number];
   eggChance: number;
   glowChance: number;
 }
@@ -118,10 +160,27 @@ const TRAITS: Record<TraitId, TraitDefinition> = {
   snackThief: { name: "偷吃", production: 0.16, power: 2 }
 };
 
+const FACILITIES: Record<FacilityId, FacilityDefinition> = {
+  coop: { name: "鸡舍", icon: "🏠", description: "鸡群容量", baseCost: { grain: 80, feather: 10, parts: 0 }, effect: "+4 个容量" },
+  incubator: { name: "孵化器", icon: "🥚", description: "孵化速度", baseCost: { grain: 100, feather: 8, parts: 2 }, effect: "孵化时间 -10%" },
+  nest: { name: "繁育窝", icon: "🧬", description: "遗传稳定", baseCost: { grain: 120, feather: 15, parts: 2 }, effect: "词条继承率 +8%" },
+  warehouse: { name: "仓库", icon: "📦", description: "离线储存", baseCost: { grain: 100, feather: 12, parts: 1 }, effect: "+2 小时上限" },
+  training: { name: "训练场", icon: "⚡", description: "队伍战力", baseCost: { grain: 150, feather: 18, parts: 3 }, effect: "战力 +5%" }
+};
+
+const MISSIONS: MissionDefinition[] = [
+  { id: "collect", title: "第一桶谷粒", description: "累计收取 100 点资源", target: 100, reward: { grain: 80, feather: 8 } },
+  { id: "hatch", title: "破壳仪式", description: "孵化 2 只新鸡", target: 2, reward: { eggs: 2, grain: 60 } },
+  { id: "breed", title: "鸡不可貌相", description: "完成 1 次繁育", target: 1, reward: { parts: 3, glowEggs: 1 } },
+  { id: "team", title: "三鸡出道", description: "组建一支 3 鸡队伍", target: 3, reward: { grain: 100, feather: 10 } },
+  { id: "explore", title: "外面的世界", description: "完成 2 次探索", target: 2, reward: { parts: 4, glowEggs: 1 } },
+  { id: "upgrade", title: "鸡舍扩建", description: "升级任意设施 1 次", target: 1, reward: { grain: 120, feather: 12, parts: 2 } }
+];
+
 const ZONES: Zone[] = [
-  { id: "garden", name: "菜园边草坡", icon: "🌿", duration: 18, recommended: 18, reward: "谷粒 · 普通蛋", grain: [45, 75], feather: [2, 5], eggChance: 0.48, glowChance: 0 },
-  { id: "puddle", name: "雨后的泥洼", icon: "💧", duration: 32, recommended: 32, reward: "羽毛 · 闪光蛋", grain: [35, 60], feather: [7, 14], eggChance: 0.24, glowChance: 0.16 },
-  { id: "windmill", name: "旧风车山丘", icon: "🌬", duration: 55, recommended: 48, reward: "大量资源 · 稀有蛋", grain: [80, 140], feather: [12, 22], eggChance: 0.35, glowChance: 0.3 }
+  { id: "garden", name: "菜园边草坡", icon: "🌿", duration: 18, recommended: 18, reward: "谷粒 · 普通蛋", grain: [45, 75], feather: [2, 5], parts: [0, 1], eggChance: 0.48, glowChance: 0 },
+  { id: "puddle", name: "雨后的泥洼", icon: "💧", duration: 32, recommended: 32, reward: "羽毛 · 零件 · 闪光蛋", grain: [35, 60], feather: [7, 14], parts: [1, 2], eggChance: 0.24, glowChance: 0.16 },
+  { id: "windmill", name: "旧风车山丘", icon: "🌬", duration: 55, recommended: 48, reward: "大量资源 · 稀有蛋", grain: [80, 140], feather: [12, 22], parts: [2, 4], eggChance: 0.35, glowChance: 0.3 }
 ];
 
 const SAMPLE_EVENTS = [
@@ -159,8 +218,8 @@ function makeChicken(speciesId: SpeciesId, traitIds?: TraitId[], generation = 1)
 
 function starterState(): GameState {
   return {
-    version: 1,
-    resources: { grain: 180, feather: 24, eggs: 2, glowEggs: 0 },
+    version: 2,
+    resources: { grain: 260, feather: 38, eggs: 2, glowEggs: 0, parts: 4 },
     bank: { grain: 12, feather: 1 },
     chickens: [
       makeChicken("sprout", ["diligent"]),
@@ -172,6 +231,9 @@ function starterState(): GameState {
     exploration: null,
     lastExpedition: null,
     events: ["第一批鸡已经占领了鸡舍。", "牧场开张，谷粒闻起来很有前途。"],
+    facilities: { coop: 1, incubator: 1, nest: 1, warehouse: 1, training: 1 },
+    stats: { collected: 0, hatched: 0, bred: 0, explored: 0 },
+    missions: { collect: { claimed: false }, hatch: { claimed: false }, breed: { claimed: false }, team: { claimed: false }, explore: { claimed: false }, upgrade: { claimed: false } },
     lastTick: Date.now()
   };
 }
@@ -182,7 +244,15 @@ function loadState(): GameState {
     if (!raw) return starterState();
     const loaded = JSON.parse(raw) as GameState;
     const fresh = starterState();
-    return { ...fresh, ...loaded, resources: { ...fresh.resources, ...loaded.resources }, bank: { ...fresh.bank, ...loaded.bank } };
+    return {
+      ...fresh,
+      ...loaded,
+      resources: { ...fresh.resources, ...loaded.resources },
+      bank: { ...fresh.bank, ...loaded.bank },
+      facilities: { ...fresh.facilities, ...loaded.facilities },
+      stats: { ...fresh.stats, ...loaded.stats },
+      missions: { ...fresh.missions, ...loaded.missions }
+    };
   } catch {
     return starterState();
   }
@@ -191,6 +261,75 @@ function loadState(): GameState {
 let state: GameState = loadState();
 let activeView: ViewId = "farm";
 let toastTimer: number | undefined;
+
+function facilityIds(): FacilityId[] {
+  return Object.keys(FACILITIES) as FacilityId[];
+}
+
+function facilityUpgradeCost(id: FacilityId): { grain: number; feather: number; parts: number } {
+  const level = state.facilities[id];
+  const factor = 1.65 ** (level - 1);
+  const base = FACILITIES[id].baseCost;
+  return {
+    grain: Math.round(base.grain * factor),
+    feather: Math.round(base.feather * factor),
+    parts: base.parts + Math.max(0, level - 1)
+  };
+}
+
+function coopCapacity(): number {
+  return 6 + (state.facilities.coop - 1) * 4;
+}
+
+function incubationTimeMultiplier(): number {
+  return 1 - (state.facilities.incubator - 1) * 0.1;
+}
+
+function breedingInheritanceChance(): number {
+  return 0.62 + (state.facilities.nest - 1) * 0.08;
+}
+
+function offlineCapSeconds(): number {
+  return MAX_OFFLINE_SECONDS + (state.facilities.warehouse - 1) * 2 * 60 * 60;
+}
+
+function trainingPowerMultiplier(): number {
+  return 1 + (state.facilities.training - 1) * 0.05;
+}
+
+function ranchLevel(): number {
+  const upgradeCount = facilityIds().reduce((sum, id) => sum + state.facilities[id] - 1, 0);
+  return 1 + Math.floor((state.chickens.length - 3 + upgradeCount * 2) / 3);
+}
+
+function facilityEffectSummary(id: FacilityId): string {
+  const level = state.facilities[id];
+  if (id === "coop") return `容量 ${coopCapacity()} 只`;
+  if (id === "incubator") return `孵化时间 -${(level - 1) * 10}%`;
+  if (id === "nest") return `词条继承 ${Math.round(breedingInheritanceChance() * 100)}%`;
+  if (id === "warehouse") return `离线储存 ${offlineCapSeconds() / 3600} 小时`;
+  return `全队战力 +${(level - 1) * 5}%`;
+}
+
+function missionProgress(id: MissionId): number {
+  if (id === "collect") return state.stats.collected;
+  if (id === "hatch") return state.stats.hatched;
+  if (id === "breed") return state.stats.bred;
+  if (id === "team") return state.team.length;
+  if (id === "explore") return state.stats.explored;
+  return facilityIds().reduce((sum, facilityId) => sum + state.facilities[facilityId] - 1, 0);
+}
+
+function rewardLabel(reward: Partial<Resources>): string {
+  const labels: Array<[keyof Resources, string]> = [["grain", "🌾"], ["feather", "🪶"], ["parts", "⚙"], ["eggs", "🥚"], ["glowEggs", "✨"]];
+  return labels.filter(([key]) => (reward[key] || 0) > 0).map(([key, icon]) => `${icon}${reward[key]}`).join(" ");
+}
+
+function addResources(reward: Partial<Resources>): void {
+  (Object.keys(reward) as Array<keyof Resources>).forEach(key => {
+    state.resources[key] += reward[key] || 0;
+  });
+}
 
 function saveState(): void {
   state.lastTick = Date.now();
@@ -203,7 +342,8 @@ function traitProductionMultiplier(chicken: Chicken): number {
 
 function chickenPower(chicken: Chicken): number {
   const base = SPECIES[chicken.species].power;
-  return Math.max(1, Math.round(base + chicken.traits.reduce((sum, id) => sum + (TRAITS[id]?.power || 0), 0)));
+  const personalPower = base + chicken.traits.reduce((sum, id) => sum + (TRAITS[id]?.power || 0), 0);
+  return Math.max(1, Math.round(personalPower * trainingPowerMultiplier()));
 }
 
 function teamPower(): number {
@@ -277,22 +417,65 @@ function switchView(view: ViewId): void {
 function renderResources(): void {
   $("#grain-count").textContent = formatNumber(state.resources.grain);
   $("#feather-count").textContent = formatNumber(state.resources.feather);
+  $("#parts-count").textContent = formatNumber(state.resources.parts);
   $("#egg-count").textContent = formatNumber(state.resources.eggs);
   $("#glow-egg-count").textContent = `库存 ${state.resources.glowEggs}`;
+}
+
+function renderMissions(): void {
+  const claimed = MISSIONS.filter(mission => state.missions[mission.id].claimed).length;
+  $("#mission-summary").textContent = `${claimed}/${MISSIONS.length} 已领取`;
+  $("#mission-list").innerHTML = MISSIONS.map(mission => {
+    const progress = Math.min(mission.target, missionProgress(mission.id));
+    const ready = progress >= mission.target;
+    const claimedMission = state.missions[mission.id].claimed;
+    const buttonText = claimedMission ? "已领取" : ready ? "领取" : `${Math.floor(progress)}/${mission.target}`;
+    return `<article class="mission-item ${claimedMission ? "is-claimed" : ""}">
+      <div>
+        <h3>${mission.title}</h3>
+        <p>${mission.description}</p>
+        <div class="mission-progress"><span style="width:${progress / mission.target * 100}%"></span></div>
+      </div>
+      <div class="mission-reward">
+        <small>${rewardLabel(mission.reward)}</small>
+        <button data-mission-id="${mission.id}" type="button" ${!ready || claimedMission ? "disabled" : ""}>${buttonText}</button>
+      </div>
+    </article>`;
+  }).join("");
+}
+
+function renderFacilities(): void {
+  $("#facility-grid").innerHTML = facilityIds().map(id => {
+    const facility = FACILITIES[id];
+    const level = state.facilities[id];
+    const maxed = level >= 3;
+    const cost = facilityUpgradeCost(id);
+    const affordable = state.resources.grain >= cost.grain && state.resources.feather >= cost.feather && state.resources.parts >= cost.parts;
+    const costText = maxed ? "已满级" : `${cost.grain} 🌾 · ${cost.feather} 🪶${cost.parts ? ` · ${cost.parts} ⚙` : ""}`;
+    return `<article class="facility-card">
+      <div class="facility-card-head"><span aria-hidden="true">${facility.icon}</span><span class="facility-level">Lv.${level}</span></div>
+      <h3>${facility.name}</h3>
+      <p>${facility.description} · 下级 ${facility.effect}</p>
+      <div class="facility-effect">${facilityEffectSummary(id)}</div>
+      <button data-facility-id="${id}" type="button" ${maxed || !affordable ? "disabled" : ""}>${costText}</button>
+    </article>`;
+  }).join("");
 }
 
 function renderFarm(): void {
   const rates = productionRates();
   const visibleChickens = state.chickens.slice(0, 3);
   $("#coop-flock").innerHTML = visibleChickens.map(chicken => chickenMarkup(chicken, "small")).join("");
-  $("#ranch-level").textContent = `牧场 Lv.${Math.max(1, Math.floor(state.chickens.length / 3))}`;
-  $("#flock-summary").textContent = `${state.chickens.length} 只鸡`;
+  $("#ranch-level").textContent = `牧场 Lv.${ranchLevel()}`;
+  $("#flock-summary").textContent = `${state.chickens.length}/${coopCapacity()} 只鸡`;
   $("#bank-grain").textContent = formatNumber(state.bank.grain);
   $("#bank-feather").textContent = formatNumber(state.bank.feather);
   $("#production-rate").textContent = `每分钟生产 ${rates.grain.toFixed(1)} 谷粒 · ${rates.feather.toFixed(1)} 羽毛`;
   $("#collect-button").disabled = state.bank.grain < 1 && state.bank.feather < 1;
   $("#next-egg-copy").textContent = state.resources.eggs > 0 ? `${state.resources.eggs} 枚普通蛋` : "等待探索带蛋回来";
   $("#team-power-copy").textContent = `战力 ${teamPower()}`;
+  renderMissions();
+  renderFacilities();
   $("#event-list").innerHTML = state.events.map((event, index) => `<li><span>${index + 1}</span>${event}</li>`).join("");
 }
 
@@ -335,10 +518,11 @@ function renderHatch(): void {
   }
 
   const busy = Boolean(incubation);
+  const coopFull = state.chickens.length >= coopCapacity();
   $all<HTMLButtonElement>(".hatch-button").forEach(button => {
     const type = button.dataset.eggType as EggType;
     const lacks = type === "common" ? state.resources.eggs < 1 || state.resources.grain < 20 : state.resources.glowEggs < 1 || state.resources.grain < 50;
-    button.disabled = busy || lacks;
+    button.disabled = busy || lacks || coopFull;
   });
 
   const options = state.chickens.map(chicken => `<option value="${chicken.id}">${SPECIES[chicken.species].name} · ${chicken.traits.map(id => TRAITS[id].name).join("/")}</option>`).join("");
@@ -351,7 +535,7 @@ function renderHatch(): void {
   if (selectedA && state.chickens.some(item => item.id === selectedA)) parentA.value = selectedA;
   if (selectedB && state.chickens.some(item => item.id === selectedB)) parentB.value = selectedB;
   if (!selectedB && state.chickens[1]) parentB.value = state.chickens[1].id;
-  $("#breed-button").disabled = busy || state.chickens.length < 2 || state.resources.grain < 80 || state.resources.feather < 12;
+  $("#breed-button").disabled = busy || coopFull || state.chickens.length < 2 || state.resources.grain < 80 || state.resources.feather < 12;
 }
 
 function renderFlock(): void {
@@ -421,22 +605,24 @@ function createHatchResult(type: EggType): Chicken {
 
 function createBreedResult(parentA: Chicken, parentB: Chicken): Chicken {
   let species = Math.random() < 0.5 ? parentA.species : parentB.species;
-  if (Math.random() < (parentA.species === parentB.species ? 0.1 : 0.05)) species = weightedSpecies("glow");
-  const inherited = [...new Set([...parentA.traits, ...parentB.traits].filter(() => Math.random() < 0.62))];
+  const mutationBonus = (state.facilities.nest - 1) * 0.02;
+  if (Math.random() < (parentA.species === parentB.species ? 0.1 : 0.05) + mutationBonus) species = weightedSpecies("glow");
+  const inherited = [...new Set([...parentA.traits, ...parentB.traits].filter(() => Math.random() < breedingInheritanceChance()))];
   if (!inherited.length) inherited.push(randomItem([...parentA.traits, ...parentB.traits]));
-  if (Math.random() < 0.18 && inherited.length < 3) inherited.push(randomItem(Object.keys(TRAITS) as TraitId[]));
+  if (Math.random() < 0.18 + mutationBonus && inherited.length < 3) inherited.push(randomItem(Object.keys(TRAITS) as TraitId[]));
   return makeChicken(species, inherited, Math.max(parentA.generation, parentB.generation) + 1);
 }
 
 function startHatch(type: EggType): void {
   if (state.incubation) return;
+  if (state.chickens.length >= coopCapacity()) return showToast("鸡舍已经住满，先扩建再孵蛋。");
   const isCommon = type === "common";
   const grainCost = isCommon ? 20 : 50;
   const eggKey = isCommon ? "eggs" : "glowEggs";
   if (state.resources[eggKey] < 1 || state.resources.grain < grainCost) return showToast("蛋箱或谷粒不够。鸡表示理解。");
   state.resources[eggKey] -= 1;
   state.resources.grain -= grainCost;
-  const duration = isCommon ? 7000 : 11000;
+  const duration = Math.round((isCommon ? 7000 : 11000) * incubationTimeMultiplier());
   state.incubation = { type, startedAt: Date.now(), endAt: Date.now() + duration, result: createHatchResult(type) };
   addEvent(`${isCommon ? "谷仓蛋" : "闪光蛋"}进入了孵化器。`);
   saveState();
@@ -445,13 +631,15 @@ function startHatch(type: EggType): void {
 
 function startBreeding(): void {
   if (state.incubation) return;
+  if (state.chickens.length >= coopCapacity()) return showToast("鸡舍没有空位安置后代。");
   const a = state.chickens.find(chicken => chicken.id === $<HTMLSelectElement>("#parent-a").value);
   const b = state.chickens.find(chicken => chicken.id === $<HTMLSelectElement>("#parent-b").value);
   if (!a || !b || a.id === b.id) return showToast("请选择两只不同的亲本。");
   if (state.resources.grain < 80 || state.resources.feather < 12) return showToast("繁育窝的伙食费还没凑齐。");
   state.resources.grain -= 80;
   state.resources.feather -= 12;
-  state.incubation = { type: "breed", startedAt: Date.now(), endAt: Date.now() + 13000, result: createBreedResult(a, b), parents: [a.id, b.id] };
+  const duration = Math.round(13000 * incubationTimeMultiplier());
+  state.incubation = { type: "breed", startedAt: Date.now(), endAt: Date.now() + duration, result: createBreedResult(a, b), parents: [a.id, b.id] };
   addEvent(`${SPECIES[a.species].name}和${SPECIES[b.species].name}留下了一枚态度复杂的蛋。`);
   saveState();
   render();
@@ -459,8 +647,11 @@ function startBreeding(): void {
 
 function openEgg(): void {
   if (!state.incubation || Date.now() < state.incubation.endAt) return;
+  const incubationType = state.incubation.type;
   const chicken = state.incubation.result;
   state.chickens.push(chicken);
+  state.stats.hatched += 1;
+  if (incubationType === "breed") state.stats.bred += 1;
   state.incubation = null;
   addEvent(`${SPECIES[chicken.species].name}破壳后先检查了一下伙食。`);
   $("#reveal-chicken").innerHTML = chickenMarkup(chicken);
@@ -505,20 +696,52 @@ function resolveExpedition(): void {
   const multiplier = success ? 1 : 0.42;
   const grain = Math.max(1, Math.floor(randomRange(zone.grain) * multiplier));
   const feather = Math.max(0, Math.floor(randomRange(zone.feather) * multiplier));
+  const parts = Math.max(0, Math.floor(randomRange(zone.parts) * multiplier));
   const egg = Math.random() < zone.eggChance * multiplier ? 1 : 0;
   const glowEgg = success && Math.random() < zone.glowChance ? 1 : 0;
   state.resources.grain += grain;
   state.resources.feather += feather;
+  state.resources.parts += parts;
   state.resources.eggs += egg;
   state.resources.glowEggs += glowEgg;
   const rewardParts = [`${grain} 谷粒`, `${feather} 羽毛`];
+  if (parts) rewardParts.push(`${parts} 零件`);
   if (egg) rewardParts.push("1 枚普通蛋");
   if (glowEgg) rewardParts.push("1 枚闪光蛋");
   state.lastExpedition = { zoneId: zone.id, success, rewards: rewardParts };
   state.exploration = null;
+  state.stats.explored += 1;
   addEvent(`${zone.name}${success ? "探索成功" : "勉强返回"}：${rewardParts.join("、")}。`);
   showToast(`${success ? "探索成功" : "小队回来了"}：${rewardParts.join("、")}`);
   saveState();
+}
+
+function upgradeFacility(id: FacilityId): void {
+  const level = state.facilities[id];
+  if (level >= 3) return;
+  const cost = facilityUpgradeCost(id);
+  if (state.resources.grain < cost.grain || state.resources.feather < cost.feather || state.resources.parts < cost.parts) {
+    return showToast("零件或资源还不够，先去探索一趟吧。");
+  }
+  state.resources.grain -= cost.grain;
+  state.resources.feather -= cost.feather;
+  state.resources.parts -= cost.parts;
+  state.facilities[id] += 1;
+  addEvent(`${FACILITIES[id].name}升级到 Lv.${state.facilities[id]}，鸡群假装很专业。`);
+  showToast(`${FACILITIES[id].name}升级完成：${facilityEffectSummary(id)}`);
+  saveState();
+  render();
+}
+
+function claimMission(id: MissionId): void {
+  const mission = MISSIONS.find(item => item.id === id);
+  if (!mission || state.missions[id].claimed || missionProgress(id) < mission.target) return;
+  state.missions[id].claimed = true;
+  addResources(mission.reward);
+  addEvent(`完成手册目标「${mission.title}」，获得 ${rewardLabel(mission.reward)}。`);
+  showToast(`领取奖励：${rewardLabel(mission.reward)}`);
+  saveState();
+  render();
 }
 
 function collectBank(): void {
@@ -527,6 +750,7 @@ function collectBank(): void {
   if (!grain && !feather) return;
   state.resources.grain += grain;
   state.resources.feather += feather;
+  state.stats.collected += grain + feather;
   state.bank.grain -= grain;
   state.bank.feather -= feather;
   if (Math.random() < 0.3) addEvent(randomItem(SAMPLE_EVENTS));
@@ -537,7 +761,7 @@ function collectBank(): void {
 
 function handleOfflineProgress(): void {
   const now = Date.now();
-  const elapsed = Math.min(MAX_OFFLINE_SECONDS, Math.max(0, (now - (state.lastTick || now)) / 1000));
+  const elapsed = Math.min(offlineCapSeconds(), Math.max(0, (now - (state.lastTick || now)) / 1000));
   if (elapsed > 3) {
     const before = { ...state.bank };
     applyProduction(elapsed);
@@ -562,6 +786,14 @@ $("#flock-grid").addEventListener("click", event => {
 });
 $("#team-slots").addEventListener("click", event => {
   if ((event.target as Element).closest("[data-go-flock]")) switchView("flock");
+});
+$("#facility-grid").addEventListener("click", event => {
+  const button = (event.target as Element).closest<HTMLElement>("[data-facility-id]");
+  if (button?.dataset.facilityId) upgradeFacility(button.dataset.facilityId as FacilityId);
+});
+$("#mission-list").addEventListener("click", event => {
+  const button = (event.target as Element).closest<HTMLElement>("[data-mission-id]");
+  if (button?.dataset.missionId) claimMission(button.dataset.missionId as MissionId);
 });
 $("#zone-list").addEventListener("click", event => {
   const button = (event.target as Element).closest<HTMLElement>("[data-zone-id]");

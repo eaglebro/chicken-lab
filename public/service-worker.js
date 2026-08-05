@@ -1,4 +1,4 @@
-const CACHE_NAME = "chicken-lab-v2";
+const CACHE_NAME = "chicken-lab-v3";
 const ASSETS = ["./", "./index.html", "./manifest.webmanifest"];
 
 self.addEventListener("install", event => {
