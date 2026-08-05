@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#1f5c45" />
+    <meta name="description" content="咯咯牧场：养鸡、孵蛋、繁育和探索的放置游戏原型。" />
+    <title>咯咯牧场</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand" aria-label="咯咯牧场">
+          <span class="brand-mark">咯</span>
+          <span>咯咯牧场</span>
+        </div>
+        <div class="resource-strip" aria-label="资源">
+          <span class="resource"><span aria-hidden="true">🌾</span><strong id="grain-count">0</strong></span>
+          <span class="resource"><span aria-hidden="true">🪶</span><strong id="feather-count">0</strong></span>
+          <span class="resource"><span aria-hidden="true">🥚</span><strong id="egg-count">0</strong></span>
+        </div>
+        <a class="icon-link" href="https://github.com/eaglebro/chicken-lab/issues/new" target="_blank" rel="noreferrer" aria-label="提交反馈" title="提交反馈">
+          <span aria-hidden="true">↗</span>
+        </a>
+      </header>
+
+      <main>
+        <section class="view is-active" data-view="farm" aria-labelledby="farm-title">
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow" id="ranch-level">牧场 Lv.1</p>
+              <h1 id="farm-title">鸡舍</h1>
+            </div>
+            <span class="status-label" id="flock-summary">3 只鸡</span>
+          </div>
+
+          <div class="coop-scene" aria-label="鸡舍里的鸡">
+            <div class="sun" aria-hidden="true"></div>
+            <div class="coop">
+              <div class="coop-roof"></div>
+              <div class="coop-door"></div>
+              <div class="coop-sign">咯</div>
+            </div>
+            <div class="coop-flock" id="coop-flock"></div>
+            <div class="ground-specks" aria-hidden="true">·· · ·· · ··· ·</div>
+          </div>
+
+          <section class="harvest-band" aria-labelledby="harvest-title">
+            <div>
+              <p class="eyebrow">待收取</p>
+              <h2 id="harvest-title"><span id="bank-grain">0</span> 🌾 · <span id="bank-feather">0</span> 🪶</h2>
+              <p class="muted" id="production-rate">每分钟生产 0 谷粒</p>
+            </div>
+            <button class="primary-action" id="collect-button" type="button">收取</button>
+          </section>
+
+          <div class="dashboard-grid">
+            <article class="metric-block">
+              <span class="metric-icon" aria-hidden="true">🥚</span>
+              <div><strong id="next-egg-copy">蛋箱充足</strong><small>孵化储备</small></div>
+            </article>
+            <article class="metric-block">
+              <span class="metric-icon" aria-hidden="true">⚡</span>
+              <div><strong id="team-power-copy">战力 0</strong><small>当前编队</small></div>
+            </article>
+          </div>
+
+          <section class="event-feed" aria-labelledby="event-title">
+            <div class="section-title-row">
+              <h2 id="event-title">牧场小事</h2>
+              <button class="text-button" id="reset-button" type="button">重置存档</button>
+            </div>
+            <ul id="event-list"></ul>
+          </section>
+        </section>
+
+        <section class="view" data-view="hatch" aria-labelledby="hatch-title">
+          <div class="page-heading">
+            <div><p class="eyebrow">摇一摇也不会更快</p><h1 id="hatch-title">孵化室</h1></div>
+            <span class="status-label" id="incubator-status">空闲</span>
+          </div>
+
+          <section class="incubator" id="incubator-panel">
+            <div class="egg-stage" id="egg-stage" aria-live="polite">
+              <div class="egg-art" id="egg-art"><span>?</span></div>
+              <div class="incubator-shadow"></div>
+            </div>
+            <div class="incubator-copy">
+              <h2 id="incubator-title">孵化位空着</h2>
+              <p id="incubator-description">选一枚蛋，看看它准备怎么出场。</p>
+              <div class="progress-track" id="incubator-progress-wrap" hidden>
+                <div class="progress-bar" id="incubator-progress"></div>
+              </div>
+              <button class="primary-action full-width" id="open-egg-button" type="button" hidden>敲开蛋壳</button>
+            </div>
+          </section>
+
+          <section aria-labelledby="egg-shop-title">
+            <div class="section-title-row"><h2 id="egg-shop-title">蛋箱</h2><span class="muted">概率公开</span></div>
+            <div class="egg-options">
+              <article class="egg-option">
+                <div class="egg-token common-egg" aria-hidden="true"></div>
+                <div class="egg-option-copy"><h3>谷仓蛋</h3><p>草团 44% · 滚滚 28% · 云绒 18% · 火羽 8% · 晨鸣 2%</p></div>
+                <button class="secondary-action hatch-button" data-egg-type="common" type="button">1 🥚 + 20 🌾</button>
+              </article>
+              <article class="egg-option">
+                <div class="egg-token glow-egg" aria-hidden="true"></div>
+                <div class="egg-option-copy"><h3>闪光蛋</h3><p>云绒 35% · 火羽 30% · 矿盔 25% · 晨鸣 10%</p></div>
+                <button class="secondary-action hatch-button" data-egg-type="glow" type="button">1 ✨蛋 + 50 🌾</button>
+                <small id="glow-egg-count">库存 0</small>
+              </article>
+            </div>
+          </section>
+
+          <section class="breeding-section" aria-labelledby="breed-title">
+            <div class="section-title-row"><h2 id="breed-title">繁育窝</h2><span class="muted">继承 1-2 个词条</span></div>
+            <div class="breed-controls">
+              <label>亲本 A<select id="parent-a"></select></label>
+              <span class="breed-plus" aria-hidden="true">＋</span>
+              <label>亲本 B<select id="parent-b"></select></label>
+            </div>
+            <button class="secondary-action full-width" id="breed-button" type="button">繁育 · 80 🌾 + 12 🪶</button>
+          </section>
+        </section>
+
+        <section class="view" data-view="flock" aria-labelledby="flock-title">
+          <div class="page-heading">
+            <div><p class="eyebrow">工作 · 战斗 · 遗传</p><h1 id="flock-title">鸡群</h1></div>
+            <span class="status-label" id="team-count">编队 0/3</span>
+          </div>
+          <div class="flock-grid" id="flock-grid"></div>
+        </section>
+
+        <section class="view" data-view="explore" aria-labelledby="explore-title">
+          <div class="page-heading">
+            <div><p class="eyebrow">外面的草更香</p><h1 id="explore-title">探索</h1></div>
+            <span class="status-label" id="explore-status">待命</span>
+          </div>
+
+          <section class="team-stage" aria-labelledby="team-title">
+            <div class="section-title-row"><h2 id="team-title">出门小队</h2><strong id="team-power">战力 0</strong></div>
+            <div class="team-slots" id="team-slots"></div>
+          </section>
+
+          <section class="expedition-active" id="expedition-active" hidden>
+            <div><p class="eyebrow">正在探索</p><h2 id="expedition-name">菜园边草坡</h2><p class="muted" id="expedition-time">00:00</p></div>
+            <div class="progress-track"><div class="progress-bar" id="expedition-progress"></div></div>
+          </section>
+
+          <div class="zone-list" id="zone-list"></div>
+        </section>
+      </main>
+
+      <nav class="bottom-nav" aria-label="主导航">
+        <button class="nav-button is-active" data-target="farm" type="button"><span aria-hidden="true">⌂</span><small>鸡舍</small></button>
+        <button class="nav-button" data-target="hatch" type="button"><span aria-hidden="true">◉</span><small>孵化</small></button>
+        <button class="nav-button" data-target="flock" type="button"><span aria-hidden="true">♟</span><small>鸡群</small></button>
+        <button class="nav-button" data-target="explore" type="button"><span aria-hidden="true">◇</span><small>探索</small></button>
+      </nav>
+    </div>
+
+    <dialog class="reveal-dialog" id="reveal-dialog">
+      <div id="reveal-chicken"></div>
+      <p class="eyebrow">破壳登场</p>
+      <h2 id="reveal-name">一只鸡</h2>
+      <p id="reveal-traits"></p>
+      <button class="primary-action full-width" id="reveal-close" type="button">收进鸡群</button>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

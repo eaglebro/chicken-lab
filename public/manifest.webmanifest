@@ -1,0 +1,10 @@
+{
+  "name": "咯咯牧场",
+  "short_name": "咯咯牧场",
+  "description": "养鸡、孵蛋、繁育和探索的放置游戏原型。",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#eaf0ec",
+  "theme_color": "#1f5c45",
+  "lang": "zh-CN"
+}
