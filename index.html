@@ -69,16 +69,21 @@
 
           <section class="mission-section" aria-labelledby="mission-title">
             <div class="section-title-row">
-              <h2 id="mission-title">牧场手册</h2>
-              <span class="muted" id="mission-summary">0/6 完成</span>
+              <div><p class="eyebrow">首小时主线</p><h2 id="mission-title">牧场手册</h2></div>
+              <span class="muted" id="mission-summary">0/6 章</span>
             </div>
             <div class="mission-list" id="mission-list"></div>
+          </section>
+
+          <section class="achievement-section" aria-labelledby="achievement-title">
+            <div class="section-title-row"><div><p class="eyebrow">长期里程碑</p><h2 id="achievement-title">牧场成就</h2></div><span class="muted" id="achievement-summary">0/7 已解锁</span></div>
+            <div class="achievement-list" id="achievement-list"></div>
           </section>
 
           <section class="facility-section" aria-labelledby="facility-title">
             <div class="section-title-row">
               <h2 id="facility-title">牧场设施</h2>
-              <span class="muted">最高 Lv.3</span>
+              <span class="blueprint-balance"><span aria-hidden="true">📐</span><strong id="blueprint-count">0</strong> 设施图纸</span>
             </div>
             <div class="facility-grid" id="facility-grid"></div>
           </section>
@@ -86,7 +91,7 @@
           <section class="event-feed" aria-labelledby="event-title">
             <div class="section-title-row">
               <h2 id="event-title">牧场小事</h2>
-              <button class="text-button" id="reset-button" type="button">重置存档</button>
+              <button class="text-button" id="save-manager-button" type="button">存档管理</button>
             </div>
             <ul id="event-list"></ul>
           </section>
@@ -118,12 +123,12 @@
             <div class="egg-options">
               <article class="egg-option">
                 <div class="egg-token common-egg" aria-hidden="true"></div>
-                <div class="egg-option-copy"><h3>谷仓蛋</h3><p>草团 44% · 滚滚 28% · 云绒 18% · 火羽 8% · 晨鸣 2%</p></div>
+                <div class="egg-option-copy"><h3>谷仓蛋</h3><p id="common-egg-odds">概率读取中</p></div>
                 <button class="secondary-action hatch-button" data-egg-type="common" type="button">1 🥚 + 20 🌾</button>
               </article>
               <article class="egg-option">
                 <div class="egg-token glow-egg" aria-hidden="true"></div>
-                <div class="egg-option-copy"><h3>闪光蛋</h3><p>云绒 35% · 火羽 30% · 矿盔 25% · 晨鸣 10%</p></div>
+                <div class="egg-option-copy"><h3>闪光蛋</h3><p id="glow-egg-odds">概率读取中</p></div>
                 <button class="secondary-action hatch-button" data-egg-type="glow" type="button">1 ✨蛋 + 50 🌾</button>
                 <small id="glow-egg-count">库存 0</small>
               </article>
@@ -131,12 +136,13 @@
           </section>
 
           <section class="breeding-section" aria-labelledby="breed-title">
-            <div class="section-title-row"><h2 id="breed-title">繁育窝</h2><span class="muted">继承 1-2 个词条</span></div>
+            <div class="section-title-row"><h2 id="breed-title">繁育窝</h2><span class="muted" id="breed-dust-copy">0 🧬 可用</span></div>
             <div class="breed-controls">
-              <label>亲本 A<select id="parent-a"></select></label>
+              <div class="breed-parent"><label>亲本 A<select id="parent-a"></select></label><label class="lock-control">锁定词条<select id="lock-a"><option value="">不锁定</option></select></label></div>
               <span class="breed-plus" aria-hidden="true">＋</span>
-              <label>亲本 B<select id="parent-b"></select></label>
+              <div class="breed-parent"><label>亲本 B<select id="parent-b"></select></label><label class="lock-control">锁定词条<select id="lock-b"><option value="">不锁定</option></select></label></div>
             </div>
+            <p class="mutation-hint" id="mutation-hint">突变线索读取中</p>
             <button class="secondary-action full-width" id="breed-button" type="button">繁育 · 80 🌾 + 12 🪶</button>
           </section>
         </section>
@@ -146,7 +152,24 @@
             <div><p class="eyebrow">工作 · 战斗 · 遗传</p><h1 id="flock-title">鸡群</h1></div>
             <span class="status-label" id="team-count">编队 0/3</span>
           </div>
+          <div class="flock-toolbar">
+            <div class="segmented-control" role="tablist" aria-label="鸡群视图">
+              <button class="segment-button is-active" data-flock-mode="chickens" type="button" role="tab" aria-selected="true">鸡只</button>
+              <button class="segment-button" data-flock-mode="codex" type="button" role="tab" aria-selected="false">图鉴</button>
+            </div>
+            <div class="dust-balance"><span aria-hidden="true">🧬</span><strong id="gene-dust-count">0</strong> 基因粉尘</div>
+          </div>
+          <section class="flock-management" id="flock-management" aria-label="鸡只管理">
+            <div><strong id="conversion-summary">选择鸡只进行手动转化</strong><small id="conversion-hint">编队中的鸡会受到保护</small></div>
+            <button class="secondary-action" id="conversion-mode-button" type="button">选择转化</button>
+            <button class="primary-action" id="convert-selected-button" type="button" disabled>转化所选</button>
+          </section>
           <div class="flock-grid" id="flock-grid"></div>
+          <section class="codex-panel" id="codex-panel" hidden>
+            <section class="codex-overview" id="codex-overview" aria-label="图鉴总完成度"></section>
+            <div class="codex-section"><div class="section-title-row"><h2>品种图鉴</h2><span class="muted" id="species-codex-summary">0/8 已发现</span></div><div class="codex-grid" id="species-codex"></div></div>
+            <div class="codex-section"><div class="section-title-row"><h2>词条图鉴</h2><span class="muted" id="trait-codex-summary">0/12 已发现</span></div><div class="trait-codex" id="trait-codex"></div></div>
+          </section>
         </section>
 
         <section class="view" data-view="explore" aria-labelledby="explore-title">
@@ -160,9 +183,38 @@
             <div class="team-slots" id="team-slots"></div>
           </section>
 
+          <fieldset class="supply-stage" id="supply-stage">
+            <legend>出发补给</legend>
+            <div class="section-title-row"><p class="muted">每次最多携带一种，点击出发后消耗</p><strong id="supply-modifier-summary">无额外修正</strong></div>
+            <div class="supply-options" id="supply-options"></div>
+          </fieldset>
+
           <section class="expedition-active" id="expedition-active" hidden>
-            <div><p class="eyebrow">正在探索</p><h2 id="expedition-name">菜园边草坡</h2><p class="muted" id="expedition-time">00:00</p></div>
+            <div class="expedition-head">
+              <div><p class="eyebrow" id="expedition-phase">移动中</p><h2 id="expedition-name">菜园边草坡</h2><p class="muted" id="expedition-time">00:00</p></div>
+              <div class="expedition-stats"><span class="movement-stat" id="expedition-move-speed">移速 +0%</span><span class="stamina-stat" id="expedition-stamina">体力 100</span></div>
+            </div>
             <div class="progress-track"><div class="progress-bar" id="expedition-progress"></div></div>
+            <div class="stamina-track" aria-hidden="true"><span id="expedition-stamina-bar"></span></div>
+            <p class="active-supply" id="expedition-supply"></p>
+            <div class="expedition-route" id="expedition-route" aria-label="探索路线"></div>
+            <div class="expedition-summary"><p id="expedition-node-copy"></p><strong id="expedition-cargo">行囊为空</strong></div>
+            <aside class="expedition-event" id="expedition-event" hidden><strong>区域事件</strong><p id="expedition-event-copy"></p></aside>
+            <aside class="boss-trait" id="boss-trait" hidden><strong id="boss-trait-name">首领特性</strong><p id="boss-trait-copy"></p></aside>
+            <ol class="expedition-log" id="expedition-log"></ol>
+          </section>
+
+          <section class="expedition-result" id="expedition-result" aria-labelledby="expedition-result-title" aria-live="polite" hidden>
+            <div class="section-title-row">
+              <div><p class="eyebrow">最近一次探索</p><h2 id="expedition-result-title">探索结算</h2></div>
+              <strong class="result-status" id="expedition-result-status">成功</strong>
+            </div>
+            <p id="expedition-result-rewards"></p>
+            <p class="result-stamina" id="expedition-result-stamina"></p>
+            <p class="result-supply" id="expedition-result-supply"></p>
+            <aside class="expedition-event result-event" id="expedition-result-event" hidden><strong>途中事件</strong><p id="expedition-result-event-copy"></p></aside>
+            <aside class="boss-trait result-boss" id="expedition-result-boss" hidden><strong>首领特性</strong><p id="expedition-result-boss-copy"></p></aside>
+            <ol class="expedition-log result-log" id="expedition-result-log"></ol>
           </section>
 
           <div class="zone-list" id="zone-list"></div>
@@ -183,6 +235,38 @@
       <h2 id="reveal-name">一只鸡</h2>
       <p id="reveal-traits"></p>
       <button class="primary-action full-width" id="reveal-close" type="button">收进鸡群</button>
+    </dialog>
+
+    <dialog class="detail-dialog" id="detail-dialog">
+      <div id="detail-chicken"></div>
+      <p class="eyebrow">鸡只档案</p>
+      <h2 id="detail-name">一只鸡</h2>
+      <p id="detail-summary"></p>
+      <div class="detail-section"><h3>能力</h3><p id="detail-roles"></p></div>
+      <div class="detail-section"><h3>词条</h3><div class="trait-list" id="detail-traits"></div></div>
+      <div class="detail-section"><h3>谱系与突变</h3><p id="detail-lineage"></p></div>
+      <button class="secondary-action full-width" id="detail-close" type="button">关闭档案</button>
+    </dialog>
+
+    <dialog class="confirm-dialog" id="convert-dialog">
+      <p class="eyebrow">不可逆操作</p>
+      <h2>转化为基因粉尘</h2>
+      <p id="convert-dialog-copy"></p>
+      <ul id="convert-dialog-list"></ul>
+      <div class="confirm-actions"><button class="secondary-action" id="convert-cancel" type="button">取消</button><button class="primary-action" id="convert-confirm" type="button">确认转化</button></div>
+    </dialog>
+
+    <dialog class="save-dialog" id="save-dialog">
+      <div class="section-title-row"><div><p class="eyebrow">本机存档</p><h2>存档管理</h2></div><button class="dialog-close" id="save-dialog-close" type="button" aria-label="关闭存档管理" title="关闭">×</button></div>
+      <p>当前进度保存在这台设备的浏览器中。导出文件可用于跨设备迁移或长期备份。</p>
+      <div class="save-status"><strong>本地备份</strong><span id="backup-status">暂无备份</span></div>
+      <div class="save-actions">
+        <button class="secondary-action" id="export-save-button" type="button">导出存档</button>
+        <button class="secondary-action" id="import-save-button" type="button">导入存档</button>
+        <button class="secondary-action" id="restore-backup-button" type="button" disabled>恢复备份</button>
+        <button class="danger-action" id="reset-button" type="button">重置牧场</button>
+      </div>
+      <input id="save-file-input" type="file" accept="application/json,.json" hidden>
     </dialog>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>

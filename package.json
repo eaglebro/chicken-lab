@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "check": "npm test && npm run build",
     "preview": "vite preview",
+    "test": "node --disable-warning=ExperimentalWarning --test --experimental-strip-types tests/*.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
